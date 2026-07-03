@@ -382,15 +382,14 @@ namespace Utility {
     inline void output_result(float accuracy) { std::cout << std::setprecision(4) << accuracy << "\nDONE\n"; }
 
     namespace detail {
-        // Read a big-endian 32-bit integer from a binary stream
         inline auto read_be32(std::ifstream &file) -> uint32_t
         {
             uint32_t value{};
             if (!file.read(reinterpret_cast<char *>(&value), sizeof(value)))
                 throw std::runtime_error("Unexpected EOF while reading 4-byte big-endian value");
-
             if constexpr (std::endian::native == std::endian::little)
-                value = std::byteswap(value);
+                value = (value >> 24) | ((value >> 8) & 0x0000FF00u) |
+                        ((value << 8) & 0x00FF0000u) | (value << 24);
             return value;
         }
 
@@ -506,7 +505,7 @@ namespace Utility {
             _rng{seed},
             _indices(N_TRAIN)
         {
-            std::ranges::iota(_indices, 0);
+            std::iota(_indices.begin(), _indices.end(), 0);
         }
 
         /// @brief Full global batches available per epoch (trailing partial batch is dropped).
