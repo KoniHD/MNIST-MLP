@@ -33,7 +33,7 @@ extern __device__ auto relu(float x) -> float;
 // One block per sample, one warp of threads (padded power of two >= OUTPUT_DIM).
 // Inactive lanes (threadIdx.x >= OUTPUT_DIM) contribute identity values so the
 // shared-memory tree reductions in kernel_softmax_ce are well-formed.
-static constexpr int SOFTMAX_BLOCK = 32;
+inline constexpr int SOFTMAX_BLOCK = 32;
 
 /// @brief Bias-add tail after the cuBLAS GEMM, with optional fused ReLU.
 /// @tparam FuseReLU true for layer 1 (stores pre-activation in `pre`, ReLU in `post`);
