@@ -17,7 +17,7 @@
 #include <vector>
 
 // TODO(Students): [Optional] ReLU activation: max(0, x).
-__device__ auto relu(float x) -> float { }
+__device__ auto relu(float x) -> float { return x > 0.0f ? x : 0.0f; }
 
 void Module::backward(const std::vector<float> &true_labels)
 {
@@ -29,21 +29,21 @@ void Module::backward(const std::vector<float> &true_labels)
     cudaDeviceSynchronize();
     // TODO(Students): Perform a non-blocking all reduce of training metrics (_dmetric) and store MPI_Request in
     // _metric_req
-
+    MPI_Iallreduce(MPI_IN_PLACE, _dmetric, 2, MPI_FLOAT, MPI_SUM, MPI_COMM_WORLD, &_metric_req);
 
     _fc2_backward();
     cudaDeviceSynchronize();
     // TODO(Students): Perform two non-blocking all reduce of parameter gradients (_dgW2, _db2) and store MPI_Request in
     // _grad_reqs[]
-
-
+    MPI_Iallreduce(MPI_IN_PLACE, _dgW2, HIDDEN_DIM * OUTPUT_DIM, MPI_FLOAT, MPI_SUM, MPI_COMM_WORLD, &_grad_reqs[0]);
+    MPI_Iallreduce(MPI_IN_PLACE, _dgb2, OUTPUT_DIM, MPI_FLOAT, MPI_SUM, MPI_COMM_WORLD, &_grad_reqs[1]);
 
     _fc1_backward();
     cudaDeviceSynchronize();
     // TODO(Students): Perform two non-blocking all reduce of parameter gradients (_dgW1, _db1) and store MPI_Request in
     // _grad_reqs[]
-
-    
+    MPI_Iallreduce(MPI_IN_PLACE, _dgW1, INPUT_DIM * HIDDEN_DIM, MPI_FLOAT, MPI_SUM, MPI_COMM_WORLD, &_grad_reqs[2]);
+    MPI_Iallreduce(MPI_IN_PLACE, _dgb1, HIDDEN_DIM, MPI_FLOAT, MPI_SUM, MPI_COMM_WORLD, &_grad_reqs[3]);
 }
 
 void Module::step(float lr)
@@ -58,7 +58,7 @@ void Module::step(float lr)
         // TODO(Students): Update the gradients (_dgW2, _dgb2, _dgW1, _dgb1) after the respective allreduce operation
         // has finished.
         // Hint: in Module::backward the MPI_Request array was stored in _grad_reqs
-
+        MPI_Waitany(4, _grad_reqs, &idx, MPI_STATUS_IGNORE);
         auto n{ns[idx]};
         // This kernel updates the gradients
         kernel_sgd<<<(n + 255) / 256, 256>>>(params[idx], grads[idx], lr, n);
@@ -70,7 +70,7 @@ void Module::pullMetrics()
 {
     // TODO(Students): Wait for the update of training metrics (_dmetric) to finish
     // Hint: in Module::backward the MPI_Request was stored in _metric_req
-
+    MPI_Wait(&_metric_req, MPI_STATUS_IGNORE);
     float host[2]{0.f, 0.f};
     // Copy the training metrics back to host
     checkCudaErrors(cudaMemcpy(host, _dmetric, 2 * sizeof(float), cudaMemcpyDeviceToHost));

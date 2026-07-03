@@ -52,8 +52,7 @@ tutor_submission: tutor_submission.cpp Utility.o
 clean:
 	rm -f sequential_submission mlx_submission student_submission \
 		reference_submission tutor_submission Utility.o \
-		student_submission.o reference_submission.o tutor_submission.o \
-		compute_graph.dot
+		student_submission.o reference_submission.o tutor_submission.o
 
 remove_reference:
 	rm -f *reference* *tutor*
