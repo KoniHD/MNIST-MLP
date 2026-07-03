@@ -450,7 +450,7 @@ namespace Utility {
         file.read(reinterpret_cast<char *>(raw.data()), static_cast<long>(total_pixels));
 
         std::vector<float> out(total_pixels);
-        for (int i = 0; i < total_pixels; ++i)
+        for (std::size_t i = 0; i < total_pixels; ++i)
             out[i] = static_cast<float>(raw[i]) / MAX_PIXEL_VALUE;
         return out;
     }

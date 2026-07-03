@@ -152,7 +152,7 @@ void Module::_fc2_backward()
 
         // gW2 += hhat^T * g
         for (std::size_t j = 0; j < HIDDEN_DIM; ++j)
-            for (int k = 0; k < OUTPUT_DIM; ++k)
+            for (std::size_t k = 0; k < OUTPUT_DIM; ++k)
                 gW2[(j * OUTPUT_DIM) + k] += hhat_row[j] * g_row[k];
 
         // gb2 += g
