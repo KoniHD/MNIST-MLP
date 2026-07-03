@@ -17,7 +17,7 @@ CUDA_FLAGS := -std=c++20 -O3 -arch=sm_75 -ccbin mpicxx -x cu -rdc=true
 CUDA_LIBS  := -lcublas -lcudart
 OMPI_CXX_FLAGS    := -DOMPI_SKIP_MPICXX -DUSE_MPI
 
-.PHONY: all clean
+.PHONY: all clean remove_reference
 
 all: student_submission tutor_submission reference_submission
 
@@ -37,17 +37,22 @@ Utility.o: Utility.cpp Utility.hpp
 	$(NVCC) $(CUDA_FLAGS) $(OMPI_CXX_FLAGS) -c $< -o $@
 
 student_submission: student_submission.cpp Utility.o
-	$(NVCC) $(CUDA_FLAGS) $(OMPI_CXX_FLAGS) -o $@ $^ $(CUDA_LIBS)
+	$(NVCC) $(CUDA_FLAGS) $(OMPI_CXX_FLAGS) -c $< -o student_submission.o
+	$(NVCC) $(CUDA_LINK) -o $@ student_submission.o Utility.o $(CUDA_LIBS)
 
 reference_submission: reference_submission.cpp Utility.o
-	$(NVCC) $(CUDA_FLAGS) $(OMPI_CXX_FLAGS) -o $@ $^ $(CUDA_LIBS)
+	$(NVCC) $(CUDA_FLAGS) $(OMPI_CXX_FLAGS) -c $< -o reference_submission.o
+	$(NVCC) $(CUDA_LINK) -o $@ reference_submission.o Utility.o $(CUDA_LIBS)
 
 tutor_submission: tutor_submission.cpp Utility.o
-	$(NVCC) $(CUDA_FLAGS) $(OMPI_CXX_FLAGS) -o $@ $^ $(CUDA_LIBS)
+	$(NVCC) $(CUDA_FLAGS) $(OMPI_CXX_FLAGS) -c $< -o tutor_submission.o
+	$(NVCC) $(CUDA_LINK) -o $@ tutor_submission.o Utility.o $(CUDA_LIBS)
 
 clean:
 	rm -f sequential_submission mlx_submission student_submission \
-		reference_submission tutor_submission Utility.o
+		reference_submission tutor_submission Utility.o \
+		student_submission.o reference_submission.o tutor_submission.o
 
 remove_reference:
 	rm -f *reference* *tutor*
+	
