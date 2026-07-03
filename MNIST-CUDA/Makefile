@@ -8,54 +8,52 @@ CXX       = g++
 CXX_FLAGS = -std=c++23 -O3 -Wall -Werror -march=native
 
 # --- Apple MLX path (macOS only; requires: brew install mlx) -----------------
-MLXCC = clang++
-MLX_PREFIX = $(shell brew --prefix mlx)
-MLX_FLAGS = 
+MLXCC       = clang++
+MLX_PREFIX  = $(shell brew --prefix mlx)
 
-# --- GPU / MPI path (requires nvc++ from NVIDIA HPC SDK and an MPI install) --
-NVCC_FLAGS     = -x cu -std=c++20 -O3 -rdc=true -arch=sm_61
-NVCC_LINK    = -std=c++20 -O3 -rdc=true
-NVCC_LDFLAGS = -lcublas
-MPICXX = mpicxx
-OMPI_CXX_FLAGS = -DOMPI_SKIP_MPICXX -DUSE_MPI
+# --- GPU / MPI path (nvcc drives, mpicxx as host compiler) -------------------
+NVCC       = nvcc
+CUDA_FLAGS := -std=c++20 -O3 -arch=sm_75 -ccbin mpicxx -x cu -rdc=true
+CUDA_LINK  := -std=c++20 -O3 -arch=sm_75 -ccbin mpicxx -rdc=true
+CUDA_LIBS  := -lcublas -lcudart
+DEFINES    := -DOMPI_SKIP_MPICXX -DUSE_MPI
 
-export OMPI_CXX = nvcc
+.PHONY: all apple clean remove_reference
 
-.PHONY: all clean
-
-all: local student_submission tutor_submission reference_submission
+all: student_submission tutor_submission reference_submission
 
 apple: sequential_submission mlx_submission
 
-# CPU-only
+# CPU-only (pure g++, c++23)
 sequential_submission: sequential_submission.cpp Utility.hpp
-	$(CXX) $(CXX_FLAGS) -o $@ $<
+	$(CXX) $(CXX_FLAGS) -o $@ $
 
 # Apple MLX backend (macOS only)
 mlx_submission: mlx_submission.cpp Utility.hpp
 	$(MLXCC) $(CXX_FLAGS) -DMLX_BACKEND -o $@ $< \
-		-I$(MLX_PREFIX)/include \
-		-L$(MLX_PREFIX)/lib \
-		-lmlx
+		-I$(MLX_PREFIX)/include -L$(MLX_PREFIX)/lib -lmlx
 
-# GPU/CUDA backend
+# Shared CUDA object
 Utility.o: Utility.cpp Utility.hpp
-	$(MPICXX) $(NVCC_FLAGS) -Xcompiler "$(CXX_FLAGS)" $(OMPI_CXX_FLAGS) -c -o $@ $<
+	$(NVCC) $(CUDA_FLAGS) $(DEFINES) -c $< -o $@
 
 student_submission: student_submission.cpp Utility.o
-	$(MPICXX) $(NVCC_FLAGS) -Xcompiler "$(CXX_FLAGS)" $(OMPI_CXX_FLAGS) -c -o student_submission.o $<
-	$(MPICXX) $(NVCC_LINK) $(OMPI_CXX_FLAGS) -o $@ student_submission.o Utility.o $(NVCC_LDFLAGS)
+	$(NVCC) $(CUDA_FLAGS) $(DEFINES) -c $< -o student_submission.o
+	$(NVCC) $(CUDA_LINK) -o $@ student_submission.o Utility.o $(CUDA_LIBS)
 
 reference_submission: reference_submission.cpp Utility.o
-	$(MPICXX) $(NVCC_FLAGS) $(OMPI_CXX_FLAGS) -c -o reference_submission.o $<
-	$(MPICXX) $(NVCC_LINK) $(OMPI_CXX_FLAGS) -o $@ reference_submission.o Utility.o $(NVCC_LDFLAGS)
+	$(NVCC) $(CUDA_FLAGS) $(DEFINES) -c $< -o reference_submission.o
+	$(NVCC) $(CUDA_LINK) -o $@ reference_submission.o Utility.o $(CUDA_LIBS)
 
 tutor_submission: tutor_submission.cpp Utility.o
-	$(MPICXX) $(NVCC_FLAGS) $(OMPI_CXX_FLAGS) -c -o tutor_submission.o $<
-	$(MPICXX) $(NVCC_LINK) $(OMPI_CXX_FLAGS) -o $@ tutor_submission.o Utility.o $(NVCC_LDFLAGS)
+	$(NVCC) $(CUDA_FLAGS) $(DEFINES) -c $< -o tutor_submission.o
+	$(NVCC) $(CUDA_LINK) -o $@ tutor_submission.o Utility.o $(CUDA_LIBS)
 
 clean:
-	rm -f sequential_submission mlx_submission student_submission reference_submission tutor_submission Utility.o
+	rm -f sequential_submission mlx_submission student_submission \
+		reference_submission tutor_submission Utility.o \
+		student_submission.o reference_submission.o tutor_submission.o \
+		compute_graph.dot
 
 remove_reference:
 	rm -f *reference* *tutor*
