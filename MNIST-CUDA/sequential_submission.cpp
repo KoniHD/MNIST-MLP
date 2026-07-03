@@ -46,7 +46,7 @@ void Module::_fc1_forward()
 
     for (std::size_t s = 0; s < _N; ++s) {
         for (std::size_t j = 0; j < HIDDEN_DIM; ++j) {
-            float sum = b1[j];
+            auto sum{b1[j]};
             for (std::size_t i = 0; i < INPUT_DIM; ++i)
                 sum += _x[(s * INPUT_DIM) + i] * W1[(i * HIDDEN_DIM) + j];
             _h[(s * HIDDEN_DIM) + j]    = sum;
@@ -65,7 +65,7 @@ void Module::_fc2_forward()
 
     for (std::size_t s = 0; s < _N; ++s) {
         for (std::size_t k = 0; k < OUTPUT_DIM; ++k) {
-            float sum = b2[k];
+            auto sum{b2[k]};
             for (std::size_t j = 0; j < HIDDEN_DIM; ++j)
                 sum += _hhat[(s * HIDDEN_DIM) + j] * W2[(j * OUTPUT_DIM) + k];
             _z[(s * OUTPUT_DIM) + k] = sum;
@@ -98,9 +98,9 @@ void Module::_softmax_ce(const std::vector<float> &true_labels)
     int correct{0};
 
     for (std::size_t s = 0; s < _N; ++s) {
-        const float *z_row = _z.data() + (s * OUTPUT_DIM);
-        const float *t_row = true_labels.data() + (s * OUTPUT_DIM);
-        float *g_row       = _g.data() + (s * OUTPUT_DIM);
+        const float *z_row{_z.data() + (s * OUTPUT_DIM)};
+        const float *t_row{true_labels.data() + (s * OUTPUT_DIM)};
+        float *g_row{_g.data() + (s * OUTPUT_DIM)};
 
         // Numerically stable softmax denominator
         float z_max{z_row[0]};
@@ -146,9 +146,9 @@ void Module::_fc2_backward()
     _dH.resize(_N * HIDDEN_DIM);
 
     for (std::size_t s = 0; s < _N; ++s) {
-        const float *hhat_row = _hhat.data() + (s * HIDDEN_DIM);
-        const float *g_row    = _g.data() + (s * OUTPUT_DIM);
-        float *dH_row         = _dH.data() + (s * HIDDEN_DIM);
+        const float *hhat_row{_hhat.data() + (s * HIDDEN_DIM)};
+        const float *g_row{_g.data() + (s * OUTPUT_DIM)};
+        float *dH_row{_dH.data() + (s * HIDDEN_DIM)};
 
         // gW2 += hhat^T * g
         for (std::size_t j = 0; j < HIDDEN_DIM; ++j)
@@ -161,7 +161,7 @@ void Module::_fc2_backward()
 
         // _dH = g · W2^T
         for (std::size_t j = 0; j < HIDDEN_DIM; ++j) {
-            float val = 0.0f;
+            float val{0.0f};
             for (std::size_t k = 0; k < OUTPUT_DIM; ++k)
                 val += g_row[k] * W2[(j * OUTPUT_DIM) + k];
             dH_row[j] = val;
@@ -179,12 +179,12 @@ void Module::_fc1_backward()
     gb1.assign(HIDDEN_DIM, 0.0f);
 
     for (std::size_t s = 0; s < _N; ++s) {
-        const float *x_row  = _x.data() + (s * INPUT_DIM);
-        const float *h_row  = _h.data() + (s * HIDDEN_DIM);
-        const float *dH_row = _dH.data() + (s * HIDDEN_DIM);
+        const float *x_row{_x.data() + (s * INPUT_DIM)};
+        const float *h_row{_h.data() + (s * HIDDEN_DIM)};
+        const float *dH_row{_dH.data() + (s * HIDDEN_DIM)};
 
         for (std::size_t j = 0; j < HIDDEN_DIM; ++j) {
-            float d = (h_row[j] > 0.0f) ? dH_row[j] : 0.0f; // ReLU mask
+            float d{(h_row[j] > 0.0f) ? dH_row[j] : 0.0f}; // ReLU mask
 
             gb1[j] += d;
 
@@ -214,27 +214,27 @@ auto main(int argc, char *argv[]) -> int
         return Utility::predict_from_safetensors(argv[1], "cpu");
 
     // === Training path ===
-    auto seed = Utility::read_seed();
+    auto seed{Utility::read_seed()};
 
     std::println("Loading MNIST data...");
-    auto train_images = Utility::load_idx_images(TRAIN_IMAGES, N_TRAIN);
-    auto train_labels = Utility::load_idx_labels(TRAIN_LABELS, N_TRAIN);
-    auto test_images  = Utility::load_idx_images(TEST_IMAGES, N_TEST);
-    auto test_labels  = Utility::load_idx_labels(TEST_LABELS, N_TEST);
+    auto train_images{Utility::load_idx_images(TRAIN_IMAGES, N_TRAIN)};
+    auto test_images{Utility::load_idx_images(TEST_IMAGES, N_TEST)};
+    auto train_labels{Utility::load_idx_labels(TRAIN_LABELS, N_TRAIN)};
+    auto test_labels{Utility::load_idx_labels(TEST_LABELS, N_TEST)};
 
     Module model{seed};
     model.to("cpu");
 
-    auto loader          = Utility::TrainLoader(train_images, train_labels, BATCH_SIZE, seed);
-    const auto n_batches = Utility::TrainLoader::stepsPerEpoch();
+    auto loader{Utility::TrainLoader(train_images, train_labels, BATCH_SIZE, seed)};
+    const auto n_batches{Utility::TrainLoader::stepsPerEpoch()};
     std::vector<float> x_images, true_labels;
 
     for (std::size_t epoch = 0; epoch < EPOCHS; ++epoch) {
         model.train();
         loader.shuffle();
 
-        double epoch_loss  = 0.0;
-        long epoch_correct = 0;
+        double epoch_loss{0.0};
+        long epoch_correct{0l};
 
         for (std::size_t b = 0; b < n_batches; ++b) {
             loader.batch(b, x_images, true_labels);
@@ -256,7 +256,7 @@ auto main(int argc, char *argv[]) -> int
 
     // === Evaluation on test data ===
     std::vector<std::size_t> test_preds;
-    float accuracy = Utility::evaluate(model, test_images, test_labels, N_TEST, &test_preds);
+    auto accuracy{Utility::evaluate(model, test_images, test_labels, N_TEST, &test_preds)};
     std::println("Test Accuracy: {:.2f}%", accuracy * 100.0f);
 
     // Visualize predictions

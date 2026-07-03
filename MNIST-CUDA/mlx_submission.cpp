@@ -84,7 +84,7 @@ void Module::pullMetrics() {}
 
 void Module::_fc1_forward()
 {
-    auto X = mx::array{_x.data(), mx::Shape{static_cast<int>(_N), INPUT_DIM}, mx::float32};
+    mx::array X{_x.data(), mx::Shape{static_cast<int>(_N), INPUT_DIM}, mx::float32};
 
     _aH = mx::matmul(X, _aW1) + _ab1;
 
@@ -101,14 +101,14 @@ void Module::_fc2_forward()
     if (not _training) {
         auto predictions = mx::argmax(_aZ, 1);
         mx::eval(predictions);
-        const auto *ptr = predictions.data<uint32_t>();
+        const auto *ptr{predictions.data<uint32_t>()};
         _pred.assign(ptr, ptr + _N);
     }
 }
 
 void Module::_softmax_ce(const std::vector<float> &true_labels)
 {
-    auto one_hot = mx::array{true_labels.data(), mx::Shape{static_cast<int>(_N), OUTPUT_DIM}, mx::float32};
+    mx::array one_hot{true_labels.data(), mx::Shape{static_cast<int>(_N), OUTPUT_DIM}, mx::float32};
 
     // G = (1/N) * (softmax(Z) - one_hot)
     auto predictions = mx::softmax(_aZ, 1); // numerically stable in MLX
@@ -134,7 +134,7 @@ void Module::_fc2_backward()
 
 void Module::_fc1_backward()
 {
-    auto X = mx::array{_x.data(), mx::Shape{static_cast<int>(_N), INPUT_DIM}, mx::float32};
+    mx::array X{_x.data(), mx::Shape{static_cast<int>(_N), INPUT_DIM}, mx::float32};
 
     auto mask = mx::astype(mx::greater(_aH, mx::array(0.0f)), mx::float32);
     auto D    = _adH * mask;
@@ -147,11 +147,11 @@ void Module::_fc1_backward()
 void Module::step(float lr)
 {
     // SGD in place
-    mx::array a_lr = mx::array(lr);
-    _aW1           = _aW1 - a_lr * _agW1;
-    _ab1           = _ab1 - a_lr * _agb1;
-    _aW2           = _aW2 - a_lr * _agW2;
-    _ab2           = _ab2 - a_lr * _agb2;
+    mx::array a_lr{lr};
+    _aW1 = _aW1 - a_lr * _agW1;
+    _ab1 = _ab1 - a_lr * _agb1;
+    _aW2 = _aW2 - a_lr * _agW2;
+    _ab2 = _ab2 - a_lr * _agb2;
     mx::eval(_aW1, _ab1, _aW2, _ab2);
 }
 
@@ -163,27 +163,27 @@ auto main(int argc, char *argv[]) -> int
         return Utility::predict_from_safetensors(argv[1], "mlx");
 
     // === Training path ===
-    auto seed = Utility::read_seed();
+    auto seed{Utility::read_seed()};
 
     std::println("Loading MNIST data...");
-    auto train_images = Utility::load_idx_images(TRAIN_IMAGES, N_TRAIN);
-    auto train_labels = Utility::load_idx_labels(TRAIN_LABELS, N_TRAIN);
-    auto test_images  = Utility::load_idx_images(TEST_IMAGES, N_TEST);
-    auto test_labels  = Utility::load_idx_labels(TEST_LABELS, N_TEST);
+    auto train_images{Utility::load_idx_images(TRAIN_IMAGES, N_TRAIN)};
+    auto test_images{Utility::load_idx_images(TEST_IMAGES, N_TEST)};
+    auto train_labels{Utility::load_idx_labels(TRAIN_LABELS, N_TRAIN)};
+    auto test_labels{Utility::load_idx_labels(TEST_LABELS, N_TEST)};
 
     Module model{seed};
     model.to("mlx");
 
-    auto loader          = Utility::TrainLoader(train_images, train_labels, BATCH_SIZE, seed);
-    const auto n_batches = Utility::TrainLoader::stepsPerEpoch();
+    auto loader{Utility::TrainLoader(train_images, train_labels, BATCH_SIZE, seed)};
+    const auto n_batches{Utility::TrainLoader::stepsPerEpoch()};
     std::vector<float> x_images, true_labels;
 
     for (std::size_t epoch = 0; epoch < EPOCHS; ++epoch) {
         model.train();
         loader.shuffle();
 
-        double epoch_loss  = 0.0;
-        long epoch_correct = 0;
+        double epoch_loss{0.0};
+        long epoch_correct{0l};
 
         for (std::size_t b = 0; b < n_batches; ++b) {
             loader.batch(b, x_images, true_labels);
@@ -205,7 +205,7 @@ auto main(int argc, char *argv[]) -> int
 
     // === Evaluation on test data ===
     std::vector<std::size_t> test_preds;
-    float accuracy = Utility::evaluate(model, test_images, test_labels, N_TEST, &test_preds);
+    auto accuracy{Utility::evaluate(model, test_images, test_labels, N_TEST, &test_preds)};
     std::println("Test Accuracy: {:.2f}%", accuracy * 100.0f);
 
     // Visualize predictions

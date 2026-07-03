@@ -59,7 +59,7 @@ void Module::step(float lr)
         // has finished.
         // Hint: in Module::backward the MPI_Request array was stored in _grad_reqs
         MPI_Waitany(4, _grad_reqs, &idx, MPI_STATUS_IGNORE);
-        int n = ns[idx];
+        auto n{ns[idx]};
         // This kernel updates the gradients
         kernel_sgd<<<(n + 255) / 256, 256>>>(params[idx], grads[idx], lr, n);
     }
@@ -107,21 +107,21 @@ int main(int argc, char **argv)
     }
 
     // === Training path ===
-    const std::size_t micro_batch = BATCH_SIZE / size; // Split BATCH_SIZE among MPI_Processes into micro-batch
-    const float lr =
-            LEARNING_RATE / size; // fuse the size normalization into learning rate (necessary afer reduce + sum)
+    const std::size_t micro_batch{BATCH_SIZE / size}; // Split BATCH_SIZE among MPI_Processes into micro-batch
+    const float lr{LEARNING_RATE
+                   / size}; // fuse the size normalization into learning rate (necessary afer reduce + sum)
 
     // Seed: rank 0 reads from stdin, broadcasts to all ranks.
-    uint32_t seed = 0;
+    uint32_t seed{0u};
     if (rank == 0)
         seed = Utility::read_seed();
     MPI_Bcast(&seed, 1, MPI_UINT32_T, 0, MPI_COMM_WORLD);
 
     // Dataset: every rank loads from disk (shared filesystem, no MPI needed).
-    auto train_images    = Utility::load_idx_images(TRAIN_IMAGES, N_TRAIN);
-    auto test_images     = Utility::load_idx_images(TEST_IMAGES, N_TEST);
-    auto train_labels_u8 = Utility::load_idx_labels(TRAIN_LABELS, N_TRAIN);
-    auto test_labels_u8  = Utility::load_idx_labels(TEST_LABELS, N_TEST);
+    auto train_images{Utility::load_idx_images(TRAIN_IMAGES, N_TRAIN)};
+    auto test_images{Utility::load_idx_images(TEST_IMAGES, N_TEST)};
+    auto train_labels_u8{Utility::load_idx_labels(TRAIN_LABELS, N_TRAIN)};
+    auto test_labels_u8{Utility::load_idx_labels(TEST_LABELS, N_TEST)};
 
     Module model;
 
@@ -134,8 +134,8 @@ int main(int argc, char **argv)
 
     model.to("cuda:" + std::to_string(rank)); // passes cuda:0, cuda:1, etc.
 
-    auto loader {Utility::TrainLoader(train_images, train_labels_u8, micro_batch, seed, rank)};
-    const auto steps_per_epoch {Utility::TrainLoader::stepsPerEpoch()};
+    auto loader{Utility::TrainLoader(train_images, train_labels_u8, micro_batch, seed, rank)};
+    const auto steps_per_epoch{Utility::TrainLoader::stepsPerEpoch()};
     std::vector<float> x_images, true_labels;
 
     // === Actual training Loop ===
@@ -143,8 +143,8 @@ int main(int argc, char **argv)
         model.train();
         loader.shuffle();
 
-        double epoch_loss  = 0.0;
-        long epoch_correct = 0;
+        double epoch_loss{0.0};
+        long epoch_correct{0l};
 
         for (std::size_t step = 0; step < steps_per_epoch; ++step) {
             loader.batch(step, x_images, true_labels);
@@ -170,7 +170,7 @@ int main(int argc, char **argv)
     // === Evaluation on test data ===
     if (rank == 0) {
         std::vector<std::size_t> test_preds;
-        float accuracy = Utility::evaluate(model, test_images, test_labels_u8, N_TEST, &test_preds);
+        auto accuracy{Utility::evaluate(model, test_images, test_labels_u8, N_TEST, &test_preds)};
         std::cout << "Test Accuracy: " << std::fixed << std::setprecision(2) << (accuracy * 100.0f) << "%\n";
 
         // Visualize predictions
