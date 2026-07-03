@@ -1,0 +1,14 @@
+# Compiled binaries
+*_submission
+
+# Object files
+*.o
+
+# PPM output (generated at runtime)
+predictions.ppm
+
+# Environment files
+*.env
+
+# Comupte graph data from MLX implementation
+*.dot

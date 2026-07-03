@@ -1,0 +1,2 @@
+data/*-idx*-ubyte filter=lfs diff=lfs merge=lfs -text
+data/*-idx*-ubyte binary

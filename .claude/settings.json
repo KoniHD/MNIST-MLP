@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cat:*)",
+      "Bash(ls:*)",
+      "Bash(cd:*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(jq -r '.tool_input.file_path // .tool_response.filePath // empty'); case \"$f\" in *.py) uv run --project \"$CLAUDE_PROJECT_DIR/MNIST-PyTorch\" ruff format \"$f\" >/dev/null 2>&1; uv run --project \"$CLAUDE_PROJECT_DIR/MNIST-PyTorch\" pyright \"$f\";; esac; true"
+          },
+          {
+            "type": "command",
+            "command": "f=$(jq -r '.tool_input.file_path // .tool_response.filePath // empty'); case \"$f\" in *.c|*.h|*.cc|*.cpp|*.hpp|*.cxx|*.hxx|*.cu|*.cuh) clang-format -i \"$f\";; esac; true"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "d=\"$CLAUDE_PROJECT_DIR/MNIST-CUDA\"; [ -f \"$d/Makefile\" ] || exit 0; make -C \"$d\" apple -q >/dev/null 2>&1 && exit 0; out=$(make -C \"$d\" apple 2>&1) || { echo \"Local C++ build is broken (make apple failed):\" >&2; printf '%s\\n' \"$out\" | tail -n 30 >&2; exit 2; }; exit 0"
+          }
+        ]
+      }
+    ]
+  }
+}
