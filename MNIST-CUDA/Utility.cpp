@@ -402,13 +402,11 @@ void Module::_fc2_backward()
                                   OUTPUT_DIM, // G col-major (OP_N: use G as-is)
                                   _dhhat, HIDDEN_DIM, // Hhat col-major (OP_T: treat as Hhat^T)
                                   &beta, _dgW2, OUTPUT_DIM)); // dgW2 col-major [HIDDEN_DIM x OUTPUT_DIM]
-
     // GEMM 2: _ddH = G · W2^T  [N x HIDDEN_DIM]
-    checkCublasErrors(cublasSgemm(cublas_handle(), CUBLAS_OP_N, CUBLAS_OP_T, HIDDEN_DIM, N, OUTPUT_DIM, &alpha, _dW2,
-                                  OUTPUT_DIM, // W2 col-major (OP_N)
-                                  _dg, OUTPUT_DIM, // G col-major (OP_T => G^T)
-                                  &beta, _ddH,
-                                  HIDDEN_DIM)); // ddH col-major [HIDDEN_DIM x N] => row-major [N x HIDDEN_DIM]
+    checkCublasErrors(cublasSgemm(cublas_handle(), CUBLAS_OP_N, CUBLAS_OP_N, HIDDEN_DIM, N, OUTPUT_DIM,   // m, n, k = 256, 128, 10
+                                &alpha, _dW2, HIDDEN_DIM,            // A, lda = 256
+                                _dg,  OUTPUT_DIM,            // B, ldb = 10
+                                &beta, _ddH, HIDDEN_DIM));         // C, ldc = 256
 }
 
 void Module::_fc1_backward()

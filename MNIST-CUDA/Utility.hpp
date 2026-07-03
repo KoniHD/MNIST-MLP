@@ -302,7 +302,7 @@ public:
                           << ") must divide BATCH_SIZE to ensure the full training set is processed.\n";
             MPI_Abort(MPI_COMM_WORLD, EXIT_FAILURE);
         }
-        if (_device == Device::CUDA and not(N == BATCH_SIZE / size)) {
+        if (_device == Device::CUDA and _training and not(N == BATCH_SIZE / size)) {
             if (rank == 0)
                 std::cerr
                         << "Nice catch! This would be a way to optimize the training!\n"

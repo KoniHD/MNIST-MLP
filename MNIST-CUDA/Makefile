@@ -13,15 +13,17 @@ MLX_PREFIX = $(shell brew --prefix mlx)
 MLX_FLAGS = 
 
 # --- GPU / MPI path (requires nvc++ from NVIDIA HPC SDK and an MPI install) --
-NVCC          = nvc++
-NVCC_FLAGS    = -cuda -cudalib=cublas
-MPICXX        = mpicxx
-OMPI_CXX      = nvc++
-OMPI_CXX_FLAGS = -DOMPI_SKIP_MPICXX
+NVCC_FLAGS     = -x cu -std=c++20 -O3 -rdc=true -arch=sm_61
+NVCC_LINK    = -std=c++20 -O3 -rdc=true
+NVCC_LDFLAGS = -lcublas
+MPICXX = mpicxx
+OMPI_CXX_FLAGS = -DOMPI_SKIP_MPICXX -DUSE_MPI
 
-.PHONY: all apple clean
+export OMPI_CXX = nvcc
 
-all: local student_submission tutor_submission
+.PHONY: all clean
+
+all: local student_submission tutor_submission reference_submission
 
 apple: sequential_submission mlx_submission
 
@@ -38,16 +40,22 @@ mlx_submission: mlx_submission.cpp Utility.hpp
 
 # GPU/CUDA backend
 Utility.o: Utility.cpp Utility.hpp
-	$(MPICXX) $(CXX_FLAGS) $(NVCC_FLAGS) $(OMPI_CXX_FLAGS) -o $@ $<
+	$(MPICXX) $(NVCC_FLAGS) -Xcompiler "$(CXX_FLAGS)" $(OMPI_CXX_FLAGS) -c -o $@ $<
 
 student_submission: student_submission.cpp Utility.o
-	$(MPICXX) $(CXX_FLAGS) $(NVCC_FLAGS) $(OMPI_CXX_FLAGS) -o $@ $^
+	$(MPICXX) $(NVCC_FLAGS) -Xcompiler "$(CXX_FLAGS)" $(OMPI_CXX_FLAGS) -c -o student_submission.o $<
+	$(MPICXX) $(NVCC_LINK) $(OMPI_CXX_FLAGS) -o $@ student_submission.o Utility.o $(NVCC_LDFLAGS)
+
+reference_submission: reference_submission.cpp Utility.o
+	$(MPICXX) $(NVCC_FLAGS) $(OMPI_CXX_FLAGS) -c -o reference_submission.o $<
+	$(MPICXX) $(NVCC_LINK) $(OMPI_CXX_FLAGS) -o $@ reference_submission.o Utility.o $(NVCC_LDFLAGS)
 
 tutor_submission: tutor_submission.cpp Utility.o
-	$(MPICXX) $(CXX_FLAGS) $(NVCC_FLAGS) $(OMPI_CXX_FLAGS) -o $@ $^
+	$(MPICXX) $(NVCC_FLAGS) $(OMPI_CXX_FLAGS) -c -o tutor_submission.o $<
+	$(MPICXX) $(NVCC_LINK) $(OMPI_CXX_FLAGS) -o $@ tutor_submission.o Utility.o $(NVCC_LDFLAGS)
 
 clean:
-	rm -f sequential_submission mlx_submission student_submission tutor_submission scratch scratch_sequential Utility.o compute_graph.dot
+	rm -f sequential_submission mlx_submission student_submission reference_submission tutor_submission Utility.o
 
 remove_reference:
 	rm -f *reference* *tutor*
