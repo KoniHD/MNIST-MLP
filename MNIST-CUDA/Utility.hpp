@@ -56,6 +56,8 @@ namespace mx = mlx::core;
         }                                                                                                              \
     } while (0)
 
+__global__ void kernel_sgd(float *param, const float *grad, float lr, int n);
+
 #endif // defined(__CUDACC__) || defined(__NVCOMPILER)
 
 // Training hyper-parameters (shared by every backend).
@@ -312,7 +314,7 @@ public:
         _N = N;
         _x = x_images;
 #if defined(__CUDACC__) || defined(__NVCOMPILER)
-        checkCudaErrors(cudaMemcpy(_dx, batch.data(), N * INPUT_DIM * sizeof(float), cudaMemcpyHostToDevice));
+        checkCudaErrors(cudaMemcpy(_dx, x_images.data(), N * INPUT_DIM * sizeof(float), cudaMemcpyHostToDevice));
 #endif // defined(__CUDACC__) || defined(__NVCOMPILER)
         _fc1_forward();
         _fc2_forward();

@@ -17,7 +17,7 @@
 #include <vector>
 
 // TODO(Students): [Optional] ReLU activation: max(0, x).
-__device__ auto relu(float x) -> float { return std::max(x, 0.f); }
+__device__ auto relu(float x) -> float { return x > 0.0f ? x : 0.0f; }
 
 void Module::backward(const std::vector<float> &true_labels)
 {
@@ -134,8 +134,8 @@ int main(int argc, char **argv)
 
     model.to("cuda:" + std::to_string(rank)); // passes cuda:0, cuda:1, etc.
 
-    auto loader               = Utility::TrainLoader(train_images, train_labels_u8, micro_batch, seed, rank);
-    const int steps_per_epoch = Utility::TrainLoader::stepsPerEpoch();
+    auto loader {Utility::TrainLoader(train_images, train_labels_u8, micro_batch, seed, rank)};
+    const auto steps_per_epoch {Utility::TrainLoader::stepsPerEpoch()};
     std::vector<float> x_images, true_labels;
 
     // === Actual training Loop ===
